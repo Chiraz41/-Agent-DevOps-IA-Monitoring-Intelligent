@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+pandas
+numpy
+scikit-learn
+requests
+elasticsearch
+redis
+prometheus-api-client
+python-dotenv
