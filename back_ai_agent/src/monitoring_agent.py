@@ -1,44 +1,99 @@
 """
-Orchestrateur du pipeline : Métriques -> Détection ML -> Explication LLM -> Résultat structuré.
+Orchestrateur du pipeline :
+Métriques -> Détection ML -> Gravité -> Prompt -> Explication LLM.
+
 Appelé par app.py (API FastAPI).
 """
-from src.data_generator import generate_metrics
-from src.anomaly_detector import AnomalyDetector
-from src.llm_explainer import explain_anomaly, call_ollama
 
+from src.anomaly_detector import AnomalyDetector
+from src.llm_explainer import explain_anomaly
+from src.severity import calculate_severity
+from src.log_service import read_logs
+import pandas as pd
+from pathlib import Path
+
+METRICS_FILE = Path("data/metrics.csv")
+
+def read_metrics():
+
+    if not METRICS_FILE.exists():
+        raise FileNotFoundError("metrics.csv introuvable")
+
+    return pd.read_csv(METRICS_FILE)
+
+detector = AnomalyDetector()
 
 def run_monitoring_cycle(n_points: int = 100) -> dict:
     """
-    Exécute un cycle complet de surveillance et retourne un résultat structuré (JSON-friendly),
-    prêt à être renvoyé par un endpoint FastAPI.
+    Exécute un cycle complet de surveillance.
     """
-    # Étape actuelle : données simulées.
-    # Étape suivante (Phase 4) : remplacer par une vraie requête à l'API Prometheus.
-    df = generate_metrics(n_points=n_points)
 
-    detector = AnomalyDetector()
-    detector.fit(df)
-    result = detector.predict(df)
+    # 1. Récupération des métriques
+    df = read_metrics()
 
-    anomalies_df = result[result["is_anomaly"]]
+    df = df.tail(n_points)
 
     anomalies = []
-    for _, row in anomalies_df.iterrows():
-        anomalies.append({
-            "timestamp": str(row["timestamp"]),
-            "cpu_percent": float(row["cpu_percent"]),
-            "ram_percent": float(row["ram_percent"]),
-            "anomaly_score": float(row["anomaly_score"]),
-            "explanation": explain_anomaly(row),
-        })
 
+    logs = read_logs()
+
+
+    # 2. Analyse de chaque métrique
+    for _, row in df.iterrows():
+
+        metrics = {
+    "cpu": float(row["cpu"]),
+    "ram": float(row["ram"]),
+    "disk": float(row["disk"]),
+    "network": float(row["network"])
+}
+
+
+        # Détection anomalie
+        prediction = detector.predict(metrics)
+
+
+        if prediction["status"] == "ANOMALIE":
+
+            severity = calculate_severity(
+                metrics["cpu"],
+                metrics["ram"],
+                metrics["disk"]
+            )
+
+
+            explanation = explain_anomaly(
+                metrics,
+                severity,
+                logs
+            )
+
+
+            anomalies.append({
+
+                "metrics": metrics,
+
+                "severity": severity,
+
+                "score": prediction["score"],
+
+                "explanation": explanation,
+            })
+
+
+    # IMPORTANT : retourner le résultat
     return {
-        "total_points_analyzed": n_points,
-        "anomalies_count": len(anomalies),
-        "anomalies": anomalies,
+        "total_points": n_points,
+        "total_anomalies": len(anomalies),
+        "anomalies": anomalies
     }
 
 
 def ask_agent(question: str) -> str:
-    """Permet de poser une question libre à l'agent IA (endpoint /agent/ask)."""
+    """
+    Permet de poser une question libre à l'agent IA.
+    """
+
+    from src.llm_explainer import call_ollama
+
     return call_ollama(question)

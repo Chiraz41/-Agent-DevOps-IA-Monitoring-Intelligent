@@ -9,8 +9,13 @@ from pydantic import BaseModel
 
 from config import API_TITLE, API_VERSION
 from src.monitoring_agent import run_monitoring_cycle, ask_agent
+from database.database import engine
+from database.models import Base
 
 app = FastAPI(title=API_TITLE, version=API_VERSION)
+Base.metadata.create_all(bind=engine)
+
+
 
 
 class AskRequest(BaseModel):
@@ -34,6 +39,7 @@ def get_anomalies(n_points: int = 100):
     détecte les anomalies (ML) et génère une explication pour chacune (LLM).
     """
     return run_monitoring_cycle(n_points=n_points)
+
 
 
 @app.post("/agent/ask")

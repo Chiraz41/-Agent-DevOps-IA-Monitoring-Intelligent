@@ -4,8 +4,11 @@ pydantic
 pandas
 numpy
 scikit-learn
+joblib
 requests
 elasticsearch
 redis
 prometheus-api-client
 python-dotenv
+sqlalchemy
+ollama

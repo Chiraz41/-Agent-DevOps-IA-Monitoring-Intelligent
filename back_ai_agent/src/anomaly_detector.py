@@ -1,42 +1,65 @@
-"""
-Détection d'anomalies sur les métriques système avec Isolation Forest.
-
-Pourquoi Isolation Forest ?
-- Apprentissage non supervisé : pas besoin de labelliser des données à l'avance
-- Rapide, léger, adapté à des métriques comme CPU/RAM/latence
-- Fonctionne bien même avec peu de données historiques
-"""
+import os
+import joblib
 import pandas as pd
-from sklearn.ensemble import IsolationForest
-
-from config import ANOMALY_CONTAMINATION
 
 
 class AnomalyDetector:
-    def __init__(self, contamination: float = ANOMALY_CONTAMINATION):
-        self.model = IsolationForest(
-            contamination=contamination,
-            random_state=42,
-            n_estimators=100,
+
+    def __init__(self):
+        model_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "model",
+            "isolation_forest.pkl"
         )
-        self.features = ["cpu_percent", "ram_percent"]
-        self.is_fitted = False
 
-    def fit(self, df: pd.DataFrame):
-        """Entraîne le modèle sur des données historiques (idéalement des données 'normales')."""
-        self.model.fit(df[self.features])
-        self.is_fitted = True
+        try:
+            self.model = joblib.load(model_path)
 
-    def predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        except Exception as e:
+            raise RuntimeError(
+                f"Impossible de charger le modèle : {e}"
+            )
+
+    def predict(self, metrics):
         """
-        Ajoute deux colonnes au DataFrame :
-        - anomaly_score : plus c'est négatif, plus c'est anormal
-        - is_anomaly : True/False
-        """
-        if not self.is_fitted:
-            raise RuntimeError("Le modèle doit être entraîné avec .fit() avant .predict()")
+        Analyse les métriques serveur
 
-        result = df.copy()
-        result["anomaly_score"] = self.model.decision_function(df[self.features])
-        result["is_anomaly"] = self.model.predict(df[self.features]) == -1
-        return result
+        metrics exemple:
+        {
+            "cpu": 80,
+            "ram": 70,
+            "disk": 60,
+            "network": 150
+        }
+        """
+
+        data = pd.DataFrame(
+            [[
+                metrics["cpu"],
+                metrics["ram"],
+                metrics["disk"],
+                metrics["network"]
+            ]],
+            columns=[
+                "cpu",
+                "ram",
+                "disk",
+                "network"
+            ]
+        )
+
+        prediction = self.model.predict(data)
+        score = self.model.decision_function(data)
+
+        if prediction[0] == -1:
+            status = "ANOMALIE"
+        else:
+            status = "NORMAL"
+
+        return {
+            "status": status,
+            "prediction": int(prediction[0]),
+            "score": float(score[0]),
+            "metrics": metrics
+        }

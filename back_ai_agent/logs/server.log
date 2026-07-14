@@ -1,0 +1,13 @@
+2026-07-10 09:00:00 INFO Application started
+
+2026-07-10 09:01:10 INFO User login
+
+2026-07-10 09:02:35 WARNING CPU usage increasing
+
+2026-07-10 09:03:10 ERROR Database timeout
+
+2026-07-10 09:03:20 ERROR Database timeout
+
+2026-07-10 09:03:50 WARNING Retry connection
+
+2026-07-10 09:04:10 INFO Connection restored
