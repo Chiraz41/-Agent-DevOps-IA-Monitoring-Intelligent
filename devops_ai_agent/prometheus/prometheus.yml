@@ -15,7 +15,6 @@ scrape_configs:
     static_configs:
       - targets: ["cadvisor:8080"]
 
-  # A ajouter plus tard : ton API FastAPI (ex: expose /metrics via prometheus-fastapi-instrumentator)
-  # - job_name: "backend-api"
-  #   static_configs:
-  #     - targets: ["backend:8000"]
+  - job_name: "backend-api"
+    static_configs:
+      - targets: ["devops_ai_agent:8000"]

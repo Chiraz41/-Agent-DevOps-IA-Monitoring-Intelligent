@@ -11,6 +11,10 @@ from src.severity import calculate_severity
 from src.log_service import read_logs
 import pandas as pd
 from pathlib import Path
+from src.history_service import ajouter_anomalie
+from src.metrics import anomalies_total
+
+
 
 METRICS_FILE = Path("data/metrics.csv")
 
@@ -69,16 +73,16 @@ def run_monitoring_cycle(n_points: int = 100) -> dict:
             )
 
 
-            anomalies.append({
-
+            anomalie_data = {
                 "metrics": metrics,
-
                 "severity": severity,
-
                 "score": prediction["score"],
-
                 "explanation": explanation,
-            })
+            }
+
+            anomalies.append(anomalie_data)
+            ajouter_anomalie(anomalie_data)
+            anomalies_total.labels(severity=severity).inc()
 
 
     # IMPORTANT : retourner le résultat
