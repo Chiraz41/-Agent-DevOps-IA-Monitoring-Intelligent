@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anomalies — Sentinel</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-page="anomalies">
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <h1>Anomalies détectées</h1>
+      <div class="subtitle">Analyse des logs et métriques en temps réel</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="live-pill">
+        <span class="live-dot" id="liveDot"></span>
+        <span id="liveLabel">Temps réel actif</span>
+      </div>
+      <button id="liveToggle" class="secondary">Mettre en pause</button>
+      <input type="number" id="nPoints" value="100" min="1" style="width:80px;" title="Nombre de points à analyser">
+      <button id="runBtn">Relancer maintenant</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="status-msg" id="cycleStatus"></div>
+
+    <div class="grid grid-4" style="margin-bottom:20px;">
+      <div class="card"><h3>Points analysés</h3><div class="stat-value" id="kpi-points">—</div></div>
+      <div class="card"><h3>Anomalies trouvées</h3><div class="stat-value" id="kpi-found" style="color:var(--sev-warning);">—</div></div>
+      <div class="card"><h3>Dont critiques</h3><div class="stat-value" id="kpi-crit" style="color:var(--sev-critical);">—</div></div>
+      <div class="card"><h3>Dernière exécution</h3><div class="stat-value" id="kpi-lastrun" style="font-size:15px;">—</div></div>
+    </div>
+
+    <div id="anomalyList"></div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/anomalies.js"></script>
+</body>
+</html>

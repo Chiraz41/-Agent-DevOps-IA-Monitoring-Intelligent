@@ -4,24 +4,54 @@ Point d'entrée de l'API - Agent DevOps IA de Monitoring Intelligent.
 Lancement : uvicorn app:app --reload
 Documentation interactive : http://localhost:8000/docs
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
+
 from src.history_service import lire_historique, calculer_statistiques
 from config import API_TITLE, API_VERSION
 from src.monitoring_agent import run_monitoring_cycle, ask_agent
 from database.database import engine
 from database.models import Base
-from typing import Optional
-from fastapi import Query
 from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
-from fastapi import Response
-from src.metrics import anomalies_total
 
-# Compteurs Prometheus
 
-anomaly_score_gauge = Gauge("anomaly_last_score", "Dernier score d'anomalie détecté")
+app = FastAPI(
+    title="AgentIA",
+    version="1.0"
+)
 
-app = FastAPI(title=API_TITLE, version=API_VERSION)
+
+# ===============================
+# CORS
+# ===============================
+
+app.add_middleware(
+    CORSMiddleware,
+
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500"
+    ],
+
+    allow_credentials=True,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"],
+)
+
+Base.metadata.create_all(bind=engine)
+
+# Compteur Prometheus
+
+anomaly_score_gauge = Gauge(
+    "anomaly_last_score",
+    "Dernier score d'anomalie détecté"
+)
+
+
 Base.metadata.create_all(bind=engine)
 
 class AskRequest(BaseModel):
