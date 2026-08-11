@@ -1,6 +1,6 @@
 ===== Performances du modèle =====
 
-Accuracy  : 0.7990
-Precision : 0.4893
-Recall    : 0.5816
-F1-score  : 0.5315
+Accuracy  : 0.8782
+Precision : 0.6727
+Recall    : 0.7500
+F1-score  : 0.7093

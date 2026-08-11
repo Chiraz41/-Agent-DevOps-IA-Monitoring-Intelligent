@@ -1,137 +1,99 @@
-import os
-import joblib
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    confusion_matrix,
-    recall_score,
-    f1_score,
-    classification_report,
+    accuracy_score, precision_score, recall_score,
+    f1_score, classification_report, confusion_matrix
 )
 
-# Chemins
+# ============================================================
+# CHARGEMENT
+# ============================================================
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+df = pd.read_csv("../data/metrics_augmented.csv")
 
-DATA_PATH = os.path.join(BASE_DIR, "data", "metrics.csv")
-MODEL_DIR = os.path.join(BASE_DIR, "model")
-MODEL_PATH = os.path.join(MODEL_DIR, "isolation_forest.pkl")
-# Dossier des rapports
-REPORT_DIR = os.path.join(BASE_DIR, "reports")
+X = df[["cpu", "ram", "disk", "network"]]
+y = df["label"]
 
-# Fichiers de rapport
-METRICS_FILE = os.path.join(REPORT_DIR, "model_metrics.txt")
-CONFUSION_FILE = os.path.join(REPORT_DIR, "confusion_matrix.csv")
-CLASSIFICATION_FILE = os.path.join(REPORT_DIR, "classification_report.txt")
+# ============================================================
+# TRAIN/TEST SPLIT STRATIFIE
+# On entraine Isolation Forest sans les labels, mais on evalue
+# sur un jeu de test separe pour ne pas biaiser les metriques.
+# ============================================================
 
-# Lecture du dataset
-
-print("Lecture du dataset...")
-
-data = pd.read_csv("data/metrics_augmented.csv")
-
-print(data.head())
-
-# Sélection des variables
-
-LABEL_COL = "label"
-
-X = data[["cpu", "ram", "disk", "network"]]
-y = data[LABEL_COL]
-
-# Séparation Train / Test
 X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
+    X, y, test_size=0.25, random_state=42, stratify=y
 )
 
-print(f"Nombre d'exemples d'entraînement : {len(X_train)}")
-print(f"Nombre d'exemples de test : {len(X_test)}")
+# ============================================================
+# SCALING
+# Important surtout si tu ajoutes d'autres modeles (SVM, KNN...)
+# Isolation Forest est moins sensible mais ca reste une bonne
+# pratique, notamment a cause de l'echelle tres differente de
+# "network" par rapport aux autres colonnes en %.
+# ============================================================
 
-# Création du modèle
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-print("Création du modèle Isolation Forest...")
+# ============================================================
+# ENTRAINEMENT
+# contamination = ratio REEL d'anomalies dans les donnees
+# (au lieu de 'auto' qui laisse le modele deviner un seuil)
+# ============================================================
 
 model = IsolationForest(
-    n_estimators=100,
-    contamination=0.1,
-    random_state=42
+    n_estimators=300,
+    contamination=0.20,
+    max_samples="auto",
+    random_state=42,
+    n_jobs=-1,
 )
 
-# Entraînement
+model.fit(X_train_scaled)
 
-print("Entraînement...")
+# ============================================================
+# PREDICTION
+# IsolationForest retourne -1 (anomalie) / 1 (normal)
+# On convertit vers notre convention : 1 = anomalie, 0 = normal
+# ============================================================
 
-# Isolation Forest s'entraîne uniquement sur les données normales
-X_train_normal = X_train[y_train == 0]
+raw_pred = model.predict(X_test_scaled)
+y_pred = (raw_pred == -1).astype(int)
 
-print(f"Données normales utilisées pour l'entraînement : {len(X_train_normal)}")
+# ============================================================
+# EVALUATION
+# ============================================================
 
-model.fit(X_train_normal)
+print("===== Performances du modele =====")
+print(f"Accuracy  : {accuracy_score(y_test, y_pred):.4f}")
+print(f"Precision : {precision_score(y_test, y_pred):.4f}")
+print(f"Recall    : {recall_score(y_test, y_pred):.4f}")
+print(f"F1-score  : {f1_score(y_test, y_pred):.4f}")
 
-# Évaluation 
+print("\nRapport detaille :")
+print(classification_report(y_test, y_pred, target_names=["normal", "anomalie"]))
 
-print("\nÉvaluation du modèle...")
+print("Matrice de confusion :")
+print(confusion_matrix(y_test, y_pred))
 
-raw_preds = model.predict(X_test)
+# ============================================================
+# BONUS : comparaison avec un modele supervise
+# Puisque tu as les labels, ca vaut le coup de comparer avec
+# un classifieur supervise pour voir le "plafond" de performance
+# atteignable sur ces donnees.
+# ============================================================
 
-    # Conversion :
-    # 1  -> normal -> 0
-    # -1 -> anomalie -> 1
-y_pred = pd.Series(raw_preds).map({
-      1:0,
-      -1:1
-})
+from sklearn.ensemble import RandomForestClassifier
 
-y_true = y_test.reset_index(drop=True)
+rf = RandomForestClassifier(n_estimators=300, random_state=42, class_weight="balanced")
+rf.fit(X_train_scaled, y_train)
+y_pred_rf = rf.predict(X_test_scaled)
 
-accuracy = accuracy_score(y_true, y_pred)
-precision = precision_score(y_true, y_pred, zero_division=0)
-recall = recall_score(y_true, y_pred, zero_division=0)
-f1 = f1_score(y_true, y_pred, zero_division=0)
-cm = confusion_matrix(y_true, y_pred)
-
-report = classification_report(
-        y_true,
-        y_pred,
-        target_names=["Normal", "Anomalie"]
-)
-
-print(f"Accuracy  : {accuracy:.4f}")
-print(f"Precision : {precision:.4f}")
-print(f"Recall    : {recall:.4f}")
-print(f"F1-score  : {f1:.4f}")
-print("\nMatrice de confusion :")
-print(cm)
-print("\nRapport de classification :")
-print(report)
-
-# Sauvegarde des résultats
-
-os.makedirs(REPORT_DIR, exist_ok=True)
-
-# 1. Sauvegarde des métriques
-with open(METRICS_FILE, "w", encoding="utf-8") as f:
-    f.write("===== Performances du modèle =====\n\n")
-    f.write(f"Accuracy  : {accuracy:.4f}\n")
-    f.write(f"Precision : {precision:.4f}\n")
-    f.write(f"Recall    : {recall:.4f}\n")
-    f.write(f"F1-score  : {f1:.4f}\n")
-
-# 2. Sauvegarde de la matrice de confusion
-cm_df = pd.DataFrame(
-    cm,
-    index=["Réel Normal", "Réel Anomalie"],
-    columns=["Prédit Normal", "Prédit Anomalie"]
-)
-cm_df.to_csv(CONFUSION_FILE)
-
-# 3. Sauvegarde du rapport de classification
-with open(CLASSIFICATION_FILE, "w", encoding="utf-8") as f:
-    f.write(report)
+print("\n===== Comparaison RandomForest (supervise) =====")
+print(f"Accuracy  : {accuracy_score(y_test, y_pred_rf):.4f}")
+print(f"Precision : {precision_score(y_test, y_pred_rf):.4f}")
+print(f"Recall    : {recall_score(y_test, y_pred_rf):.4f}")
+print(f"F1-score  : {f1_score(y_test, y_pred_rf):.4f}")

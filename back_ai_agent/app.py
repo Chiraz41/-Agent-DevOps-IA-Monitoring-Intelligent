@@ -8,12 +8,10 @@ from fastapi import FastAPI, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-
+from src.log_service import get_recent_logs
 from src.history_service import lire_historique, calculer_statistiques
 from config import API_TITLE, API_VERSION
 from src.monitoring_agent import run_monitoring_cycle, ask_agent
-from database.database import engine
-from database.models import Base
 from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 
@@ -32,17 +30,16 @@ app.add_middleware(
 
     allow_origins=[
         "http://localhost:5500",
-        "http://127.0.0.1:5500"
+        "http://127.0.0.1:5500",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
     ],
-
     allow_credentials=True,
 
     allow_methods=["*"],
 
     allow_headers=["*"],
 )
-
-Base.metadata.create_all(bind=engine)
 
 # Compteur Prometheus
 
@@ -51,8 +48,6 @@ anomaly_score_gauge = Gauge(
     "Dernier score d'anomalie détecté"
 )
 
-
-Base.metadata.create_all(bind=engine)
 
 class AskRequest(BaseModel):
     question: str
@@ -93,3 +88,7 @@ def metrics():
 def agent_ask(payload: AskRequest):
     """Pose une question libre à l'agent IA (chat direct avec le LLM)."""
     return {"question": payload.question, "answer": ask_agent(payload.question)}
+
+@app.get("/logs/recent")
+def logs_recent(minutes: int = Query(default=30)):
+    return {"logs": get_recent_logs(minutes)}
