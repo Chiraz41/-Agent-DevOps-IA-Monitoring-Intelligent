@@ -97,3 +97,8 @@ print(f"Accuracy  : {accuracy_score(y_test, y_pred_rf):.4f}")
 print(f"Precision : {precision_score(y_test, y_pred_rf):.4f}")
 print(f"Recall    : {recall_score(y_test, y_pred_rf):.4f}")
 print(f"F1-score  : {f1_score(y_test, y_pred_rf):.4f}")
+
+import joblib
+
+joblib.dump(model, "../model/isolation_forest.pkl")
+joblib.dump(scaler, "../model/scaler.pkl")

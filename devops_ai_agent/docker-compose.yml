@@ -151,3 +151,24 @@ services:
     networks:
       - monitoring-net
     restart: unless-stopped
+      # ---------------------------------------------------------
+  # BACKEND - Agent IA FastAPI
+  # ---------------------------------------------------------
+  backend:
+    build: ../back_ai_agent
+    container_name: devops_ai_agent
+    env_file:
+      - ../back_ai_agent/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LOGSTASH_HOST=logstash
+      - LOGSTASH_PORT=5000
+    ports:
+      - "8000:8000"
+    networks:
+      - monitoring-net
+    depends_on:
+      - redis
+      - elasticsearch
+      - logstash
+    restart: unless-stopped

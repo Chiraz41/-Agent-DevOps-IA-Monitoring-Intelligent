@@ -33,6 +33,7 @@ async function request(endpoint, options = {}) {
 
   if (response.status === 401) {
     clearAuthToken();
+    window.dispatchEvent(new Event("auth:unauthorized"));
   }
 
   const data = await response.json().catch(() => ({}));

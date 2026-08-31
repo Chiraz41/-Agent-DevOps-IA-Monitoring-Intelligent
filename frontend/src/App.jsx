@@ -45,7 +45,7 @@ export default function App() {
     useState(window.location.pathname);
 
   const { health } = useHealth(30000);
-  const { user, loading, error, login, logout } = useAuth();
+  const { user, loading, error, login, register, logout } = useAuth();
 
   const navigate = (path) => {
     window.history.pushState({}, "", path);
@@ -58,7 +58,14 @@ export default function App() {
   };
 
   if (!user) {
-    return <Login onLogin={login} loading={loading} error={error} />;
+    return (
+      <Login
+        onLogin={login}
+        onSignup={register}
+        loading={loading}
+        error={error}
+      />
+    );
   }
 
   return (

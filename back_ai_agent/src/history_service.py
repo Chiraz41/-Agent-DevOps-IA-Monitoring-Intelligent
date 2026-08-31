@@ -1,25 +1,12 @@
-import json
-import os
-from datetime import datetime
-
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "history.json")
+from src.crud import ajouter_anomalie as _ajouter, lire_historique as _lire
 
 def ajouter_anomalie(anomalie: dict):
-    anomalie["timestamp"] = datetime.now().isoformat()
-    historique = lire_historique()
-    historique.append(anomalie)
-    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(historique, f, indent=2)
+    """anomalie doit contenir : severity, score, metrics (dict), explanation (optionnel)"""
+    return _ajouter(anomalie)
 
 def lire_historique(limit: int = None):
-    if not os.path.exists(HISTORY_FILE):
-        return []
-    with open(HISTORY_FILE, "r") as f:
-        data = json.load(f)
-    if limit:
-        return data[-limit:]
-    return data
+    return _lire(limit)
+
 def calculer_statistiques():
     historique = lire_historique()
 
@@ -28,34 +15,33 @@ def calculer_statistiques():
             "total_anomalies": 0,
             "par_severite": {},
             "score_moyen": 0,
-            "metrique_la_plus_touchee": None
+            "metrique_la_plus_touchee": None,
+            "repartition_metriques": {},
         }
 
     total = len(historique)
 
-    # Répartition par sévérité
     par_severite = {}
     for a in historique:
-        sev = a.get("severity", "inconnue")
+        sev = a.severity or "inconnue"
         par_severite[sev] = par_severite.get(sev, 0) + 1
 
-    # Score moyen
-    scores = [a.get("score", 0) for a in historique if a.get("score") is not None]
+    scores = [a.score for a in historique if a.score is not None]
     score_moyen = sum(scores) / len(scores) if scores else 0
 
-    # Métrique la plus souvent en cause (cpu, ram, disk, network)
     compteur_metriques = {}
     for a in historique:
-        metrics = a.get("metrics", {})
-        for nom_metrique, valeur in metrics.items():
+        for nom_metrique in (a.metrics or {}).keys():
             compteur_metriques[nom_metrique] = compteur_metriques.get(nom_metrique, 0) + 1
 
-    metrique_la_plus_touchee = max(compteur_metriques, key=compteur_metriques.get) if compteur_metriques else None
+    metrique_la_plus_touchee = (
+        max(compteur_metriques, key=compteur_metriques.get) if compteur_metriques else None
+    )
 
     return {
         "total_anomalies": total,
         "par_severite": par_severite,
         "score_moyen": round(score_moyen, 3),
         "metrique_la_plus_touchee": metrique_la_plus_touchee,
-        "repartition_metriques": compteur_metriques
+        "repartition_metriques": compteur_metriques,
     }

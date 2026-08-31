@@ -11,10 +11,12 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
 
-  - job_name: "cadvisor"
-    static_configs:
-      - targets: ["cadvisor:8080"]
+  # cadvisor désactivé (service commenté dans docker-compose) — à réactiver plus tard
+  # - job_name: "cadvisor"
+  #   static_configs:
+  #     - targets: ["cadvisor:8080"]
 
   - job_name: "backend-api"
     static_configs:
       - targets: ["devops_ai_agent:8000"]
+    metrics_path: /metrics

@@ -14,28 +14,8 @@ ANOMALY_RATIO = 0.20
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_PATH = os.path.join(BASE_DIR, "data", "metrics_augmented.csv")
 
-# ============================================================
-# POURQUOI CETTE VERSION EST DIFFERENTE
-# ============================================================
-# 1. random.uniform() -> distributions "en boite" avec bords durs.
-#    Isolation Forest isole plus facilement les points proches des
-#    bords => faux positifs sur du trafic normal mais "extreme".
-#    On utilise donc des lois normales (np.random.normal), plus
-#    realistes et sans frontiere artificielle nette.
-#
-# 2. Les 4 metriques etaient generees independamment. En vrai,
-#    cpu/ram/network sont correles. On ajoute une composante
-#    "charge globale du serveur" partagee entre les metriques.
-#
-# 3. On deduplique les lignes trop proches (arrondi identique)
-#    pour eviter les doublons/quasi-doublons qui n'apportent
-#    aucune information au modele.
-# ============================================================
-
-
 def clip(x, lo, hi):
     return np.clip(x, lo, hi)
-
 
 def generate_row():
     # --------------------------------------------------------

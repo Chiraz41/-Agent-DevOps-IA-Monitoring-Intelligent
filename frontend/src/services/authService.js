@@ -1,21 +1,23 @@
-import { api, setAuthToken, clearAuthToken } from "./api";
+import { api, setAuthToken, clearAuthToken, getAuthToken } from "./api";
 
-// Le backend doit exposer POST /auth/login et renvoyer
-// { token: string, user: { name, email, role } }
-export async function loginRequest(email, password) {
+export async function login(email, password) {
   const data = await api.post("/auth/login", { email, password });
-
-  setAuthToken(data.token);
-
-  return data.user;
+  setAuthToken(data.access_token);
+  return data;
 }
 
-export function logoutRequest() {
+export async function register(email, password, role) {
+  return api.post("/auth/register", { email, password, role });
+}
+
+export async function getCurrentUser() {
+  return api.get("/auth/me");
+}
+
+export function logout() {
   clearAuthToken();
 }
 
-// Optionnel : à appeler au chargement de l'app pour restaurer
-// la session si un token valide est déjà stocké.
-export function fetchCurrentUser() {
-  return api.get("/auth/me");
+export function isAuthenticated() {
+  return !!getAuthToken();
 }

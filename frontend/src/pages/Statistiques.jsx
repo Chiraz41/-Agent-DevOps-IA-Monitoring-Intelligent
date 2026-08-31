@@ -1,29 +1,53 @@
 import { useEffect, useState } from "react";
-import { getHistory } from "../services/historyService";
-
+import { getStats } from "../services/statsService";
 import Loader from "../components/common/Loader";
 
+const REFRESH_INTERVAL_MS = 5000; // toutes les 5s, ajustable
+
 export default function Statistiques() {
-  const [history, setHistory] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getHistory({
-          limit: 100,
-          anomaliesOnly: false,
-        });
+    let cancelled = false;
 
-        setHistory(data.history || []);
-      } catch (error) {
-        console.error(error);
+    async function fetchStats(isBackground) {
+      if (cancelled) return;
+      if (isBackground) setRefreshing(true);
+
+      try {
+        const data = await getStats();
+        if (cancelled) return;
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled && !isBackground) {
+          setError("Impossible de charger les statistiques.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          if (isBackground) setRefreshing(false);
+          setLoading(false);
+        }
       }
     }
 
-    load();
+    // Déclenchement différé : évite d'appeler setState de façon
+    // synchrone dans le corps de l'effet (warning React).
+    const timeoutId = setTimeout(() => fetchStats(false), 0);
+
+    const intervalId = setInterval(() => {
+      fetchStats(true);
+    }, REFRESH_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
   }, []);
 
   if (loading) {
@@ -34,73 +58,79 @@ export default function Statistiques() {
     );
   }
 
-  const total = history.length;
+  if (error) {
+    return (
+      <div className="page">
+        <p className="error">{error}</p>
+      </div>
+    );
+  }
 
-  const anomalies = history.filter(
-    (item) => item.is_anomaly
-  ).length;
-
-  const normal = total - anomalies;
-
-  const anomalyRate =
-    total > 0
-      ? ((anomalies / total) * 100).toFixed(1)
-      : "0";
-
-  const scores = history
-    .filter(
-      (item) =>
-        item.anomaly_score !== null &&
-        item.anomaly_score !== undefined
-    )
-    .map((item) => Number(item.anomaly_score));
-
-  const averageScore =
-    scores.length > 0
-      ? (
-          scores.reduce(
-            (sum, value) => sum + value,
-            0
-          ) / scores.length
-        ).toFixed(3)
-      : "--";
+  const {
+    total_anomalies = 0,
+    par_severite = {},
+    score_moyen = 0,
+    metrique_la_plus_touchee = null,
+    repartition_metriques = {},
+  } = stats || {};
 
   return (
     <div className="page">
       <div className="page-title">
-        <h1>Statistiques</h1>
+        <h1>
+          Statistiques
+          {refreshing && (
+            <span className="live-indicator" title="Mise à jour..." />
+          )}
+        </h1>
 
-        <p>
-          Vue globale des analyses effectuées.
-        </p>
+        <p>Vue globale des anomalies détectées.</p>
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card">
-          <span>Analyses</span>
-          <strong>{total}</strong>
-        </div>
-
         <div className="stat-card danger">
-          <span>Anomalies</span>
-          <strong>{anomalies}</strong>
-        </div>
-
-        <div className="stat-card success">
-          <span>Normal</span>
-          <strong>{normal}</strong>
-        </div>
-
-        <div className="stat-card">
-          <span>Taux d'anomalie</span>
-          <strong>{anomalyRate}%</strong>
+          <span>Total anomalies</span>
+          <strong>{total_anomalies}</strong>
         </div>
 
         <div className="stat-card">
           <span>Score moyen</span>
-          <strong>{averageScore}</strong>
+          <strong>{score_moyen}</strong>
+        </div>
+
+        <div className="stat-card">
+          <span>Métrique la plus touchée</span>
+          <strong>{metrique_la_plus_touchee || "--"}</strong>
         </div>
       </div>
+
+      {Object.keys(par_severite).length > 0 && (
+        <div className="stats-section">
+          <h2>Répartition par sévérité</h2>
+          <div className="stats-grid">
+            {Object.entries(par_severite).map(([severite, count]) => (
+              <div className="stat-card" key={severite}>
+                <span>{severite}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {Object.keys(repartition_metriques).length > 0 && (
+        <div className="stats-section">
+          <h2>Répartition par métrique</h2>
+          <div className="stats-grid">
+            {Object.entries(repartition_metriques).map(([metrique, count]) => (
+              <div className="stat-card" key={metrique}>
+                <span>{metrique}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

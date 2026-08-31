@@ -35,14 +35,13 @@ export default function Assistant() {
       <div className="page-header">
         <div>
           <h1>Assistant IA</h1>
-
           <p>
             Interrogez l'agent DevOps sur vos
             anomalies, métriques et logs.
           </p>
         </div>
       </div>
-
+      <br/>
       <section className="chat-container">
 
         <div className="chat-header">

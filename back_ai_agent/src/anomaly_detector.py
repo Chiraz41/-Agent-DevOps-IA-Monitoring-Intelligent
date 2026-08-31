@@ -6,60 +6,32 @@ import pandas as pd
 class AnomalyDetector:
 
     def __init__(self):
-        model_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "model",
-            "isolation_forest.pkl"
-        )
+        base_dir = os.path.dirname(__file__)
+        model_path = os.path.join(base_dir, "..", "model", "isolation_forest.pkl")
+        scaler_path = os.path.join(base_dir, "..", "model", "scaler.pkl")
 
         try:
             self.model = joblib.load(model_path)
-
+            self.scaler = joblib.load(scaler_path)
         except Exception as e:
-            raise RuntimeError(
-                f"Impossible de charger le modèle : {e}"
-            )
+            raise RuntimeError(f"Impossible de charger le modèle : {e}")
 
     def predict(self, metrics):
-        """
-        Analyse les métriques serveur
-
-        metrics exemple:
-        {
-            "cpu": 80,
-            "ram": 70,
-            "disk": 60,
-            "network": 150
-        }
-        """
-
         data = pd.DataFrame(
-            [[
-                metrics["cpu"],
-                metrics["ram"],
-                metrics["disk"],
-                metrics["network"]
-            ]],
-            columns=[
-                "cpu",
-                "ram",
-                "disk",
-                "network"
-            ]
+            [[metrics["cpu"], metrics["ram"], metrics["disk"], metrics["network"]]],
+            columns=["cpu", "ram", "disk", "network"],
         )
 
-        prediction = self.model.predict(data)
-        score = self.model.decision_function(data)
+        data_scaled = self.scaler.transform(data)  # <-- l'étape qui manquait
 
-        if prediction[0] == -1:
-            status = "ANOMALIE"
-        else:
-            status = "NORMAL"
+        prediction = self.model.predict(data_scaled)
+        score = self.model.decision_function(data_scaled)
+
+        status = "ANOMALIE" if prediction[0] == -1 else "NORMAL"
 
         return {
             "status": status,
             "prediction": int(prediction[0]),
             "score": float(score[0]),
-            "metrics": metrics
+            "metrics": metrics,
         }

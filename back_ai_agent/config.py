@@ -4,7 +4,11 @@ Toutes les valeurs modifiables (URLs, seuils, noms de modèle) sont ici,
 pour ne jamais avoir à toucher au code métier quand tu changes d'environnement.
 """
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 # --- Ollama / LLM ---
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
