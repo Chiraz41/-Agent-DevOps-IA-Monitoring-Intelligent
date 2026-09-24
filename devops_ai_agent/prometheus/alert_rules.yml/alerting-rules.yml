@@ -1,0 +1,71 @@
+groups:
+  - name: backend_alerts
+    interval: 30s
+    rules:
+      # Alerte si le backend ne répond pas
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend FastAPI est down"
+          description: "Le backend FastAPI ne répond plus depuis 1 minute."
+
+
+      # Alerte si le temps de réponse est trop élevé
+      - alert: BackendSlowResponse
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="backend"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend lent"
+          description: "Le temps de réponse P95 du backend est > 2s depuis 5 minutes."
+
+
+      # Alerte si trop d'anomalies sont détectées
+      - alert: HighAnomalyRate
+        expr: rate(anomalies_detected_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'anomalies élevé"
+          description: "Plus de 6 anomalies détectées par minute depuis 5 minutes."
+
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Alerte si CPU élevé
+      - alert: HighCPU
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU élevé"
+          description: "L'utilisation CPU est > 80% depuis 5 minutes."
+
+
+      # Alerte si RAM élevée
+      - alert: HighMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM élevée"
+          description: "L'utilisation RAM est > 85% depuis 5 minutes."
+
+
+      # Alerte si Prometheus ne scrape pas
+      - alert: PrometheusScrapeFailed
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus ne scrape pas le backend"
+          description: "Prometheus n'arrive pas à scraper le backend depuis 2 minutes."

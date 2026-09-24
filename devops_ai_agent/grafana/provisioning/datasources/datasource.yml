@@ -5,5 +5,17 @@ datasources:
     type: prometheus
     access: proxy
     url: http://prometheus:9090
+    uid: prometheus
     isDefault: true
-    editable: true
+    editable: false
+
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    uid: elasticsearch
+    editable: false
+    jsonData:
+      index: logs-*
+      timeField: "@timestamp"
+      interval: Daily

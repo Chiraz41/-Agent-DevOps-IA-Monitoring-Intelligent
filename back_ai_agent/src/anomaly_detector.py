@@ -1,7 +1,7 @@
 import os
 import joblib
 import pandas as pd
-
+from src.metrics import anomaly_last_score
 
 class AnomalyDetector:
 
@@ -26,6 +26,8 @@ class AnomalyDetector:
 
         prediction = self.model.predict(data_scaled)
         score = self.model.decision_function(data_scaled)
+
+        anomaly_last_score.set(float(score[0]))
 
         status = "ANOMALIE" if prediction[0] == -1 else "NORMAL"
 

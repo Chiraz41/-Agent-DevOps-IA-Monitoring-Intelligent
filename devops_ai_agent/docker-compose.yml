@@ -7,6 +7,7 @@ volumes:
   grafana-data:
   esdata:
   redis-data:
+  alertmanager-data:
 
 services:
   # ---------------------------------------------------------
@@ -29,6 +30,7 @@ services:
     container_name: prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
@@ -171,4 +173,22 @@ services:
       - redis
       - elasticsearch
       - logstash
+    restart: unless-stopped
+    # ---------------------------------------------------------
+  # ALERTMANAGER - Gestion des alertes
+  # Rôle : reçoit les alertes de Prometheus et envoie les notifications
+  # ---------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring-net
     restart: unless-stopped

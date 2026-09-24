@@ -18,7 +18,7 @@ from src.auth.dependencies import get_current_user
 from src.routes.auth_routes import router as auth_router
 from src.crud import ajouter_message, lire_messages
 from src.cache import get_cached, set_cached
-
+from src.metrics import anomaly_last_score
 app = FastAPI(
     title="AgentIA",
     version="1.0"
@@ -45,12 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Compteur Prometheus
 
-anomaly_score_gauge = Gauge(
-    "anomaly_last_score",
-    "Dernier score d'anomalie détecté"
-)
 
 
 class AskRequest(BaseModel):
